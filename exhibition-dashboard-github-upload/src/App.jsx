@@ -29,7 +29,11 @@ import {
   roles,
   statusOptions,
 } from "./data";
-import { hasSupabaseConfig, supabase } from "./supabaseClient";
+import {
+  hasSupabaseConfig,
+  supabase,
+  supabaseConfigError,
+} from "./supabaseClient";
 import {
   calculateMainTask,
   calculateProjectProgress,
@@ -121,11 +125,23 @@ const emptySubTask = {
 const readInitialState = () => {
   try {
     const saved = localStorage.getItem(storageKey);
-    return saved ? JSON.parse(saved) : initialState;
+    const parsed = saved ? JSON.parse(saved) : initialState;
+    return isDashboardState(parsed) ? parsed : initialState;
   } catch {
     return initialState;
   }
 };
+
+const isDashboardState = (value) =>
+  Boolean(
+    value &&
+      Array.isArray(value.users) &&
+      Array.isArray(value.categories) &&
+      Array.isArray(value.projects) &&
+      Array.isArray(value.mainTasks) &&
+      Array.isArray(value.subTasks) &&
+      Array.isArray(value.updates),
+  );
 
 const persistDashboardState = async (next, setSyncStatus) => {
   localStorage.setItem(storageKey, JSON.stringify(next));
@@ -163,7 +179,11 @@ function App() {
   });
   const [modal, setModal] = useState(null);
   const [syncStatus, setSyncStatus] = useState(
-    hasSupabaseConfig ? "Connecting team sync" : "Local demo mode",
+    supabaseConfigError
+      ? "Supabase config error"
+      : hasSupabaseConfig
+        ? "Connecting team sync"
+        : "Local demo mode",
   );
 
   useEffect(() => {
@@ -174,6 +194,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (supabaseConfigError) {
+      setSyncStatus("Supabase config error");
+      return undefined;
+    }
+
     if (!hasSupabaseConfig || !supabase) return undefined;
 
     let cancelled = false;
@@ -193,7 +218,7 @@ function App() {
         return;
       }
 
-      if (data?.data) {
+      if (data?.data && isDashboardState(data.data)) {
         setState(data.data);
         localStorage.setItem(storageKey, JSON.stringify(data.data));
         setSyncStatus("Team sync live");
@@ -225,7 +250,7 @@ function App() {
         },
         (payload) => {
           const next = payload.new?.data;
-          if (!next) return;
+          if (!isDashboardState(next)) return;
           setState(next);
           localStorage.setItem(storageKey, JSON.stringify(next));
           setSyncStatus("Team sync live");

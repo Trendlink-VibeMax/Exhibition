@@ -71,3 +71,19 @@ For full production-grade auth, auditing, and normalized reporting, use `supabas
 ## Recommended Next Step
 
 Deploy Option B if you want your team to start sharing updates from the same live dashboard.
+
+## Troubleshooting: White Blank Page After Deploy
+
+If the deployed Vercel page is blank white:
+
+1. Check Vercel environment variables:
+   - `VITE_SUPABASE_URL` must be the Supabase Project URL, starting with `https://`
+   - `VITE_SUPABASE_ANON_KEY` must be the anon/publishable key
+   - Do not use the service role or secret key
+2. Run `supabase/team_sync.sql` in Supabase SQL Editor.
+3. Redeploy the Vercel project after saving environment variables.
+4. Make sure your GitHub repo has the latest files:
+   - `src/App.jsx`
+   - `src/supabaseClient.js`
+
+The app now catches bad Supabase configuration and should show a setup status instead of crashing to a blank page.
